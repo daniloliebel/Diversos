@@ -1,0 +1,7 @@
+apt-get update
+cp /var/jenkins_home/scripts/snep/database.sql .
+cp /var/jenkins_home/scripts/snep/core-cnl.sql .
+cp /var/jenkins_home/scripts/snep/schema.sql .
+cp /var/jenkins_home/scripts/snep/system_data.sql .
+cp -r /var/jenkins_home/scripts/snep/install/ .
+
