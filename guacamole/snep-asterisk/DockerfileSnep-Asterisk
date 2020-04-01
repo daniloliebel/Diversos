@@ -1,0 +1,91 @@
+FROM debian:8
+WORKDIR /var/src
+RUN apt-get update --fix-missing
+RUN apt-get install -y apache2
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV MYSQL_PWD sneppass
+#RUN echo "mysql-server mysql-server/root_password password $MYSQL_PWD" | debconf-set-selections
+#RUN echo "mysql-server mysql-server/root_password_again password $MYSQL_PWD" | debconf-set-selections
+#RUN apt-get --yes --force-yes install mysql-server
+RUN apt-get --yes --force-yes install wget curl nano
+RUN apt-get -y install unixodbc unixodbc-dev libmyodbc odbcinst1debian2 libcurl3 libncurses5-dev git 
+RUN apt-get -y install php5 php5-cgi php5-mysql php5-gd php5-curl build-essential lshw libjansson-dev
+RUN apt-get -y install libssl-dev sox sqlite3 libsqlite3-dev libapache2-mod-php5 libxml2-dev uuid-dev
+RUN cd /usr/src/  && \
+         wget http://downloads.asterisk.org/pub/telephony/asterisk/old-releases/asterisk-13.10.0.tar.gz  && \
+         tar xvf asterisk-13.10.0.tar.gz 
+RUN cd /usr/src/asterisk*  && \
+         ./configure
+RUN cd /usr/src/asterisk* &&  \
+         make menuselect/menuselect menuselect-tree menuselect.makeopts && \
+         menuselect/menuselect --disable BUILD_NATIVE \
+         menuselect/menuselect --enable app_confbridge \
+         menuselect/menuselect --enable app_fax \
+         menuselect/menuselect --enable app_macro \
+ 	 menuselect/menuselect --enable ODBC_STORAGE \
+         menuselect/menuselect --enable BETTER_BACKTRACES \
+         menuselect/menuselect --disable MOH-OPSOUND-WAV \
+         menuselect/menuselect --enable MOH-OPSOUND-GSM \
+         make && \
+         make install
+RUN cd /usr/src/asterisk* && \
+         cp contrib/init.d/rc.debian.asterisk /etc/init.d/asterisk && \
+         chmod +X /etc/init.d/asterisk && \
+         update-rc.d asterisk defaults
+COPY asterisk /etc/init.d/
+RUN cd /var/www/html && \
+         git clone https://bitbucket.org/snepdev/snep-3.git && \
+         mv snep-3 snep
+RUN cd /var/www/html && \
+         find . -type f  -exec chmod 640 {} \; -exec chown www-data:www-data {} \; && \
+         find . -type d  -exec chmod 755 {} \; -exec chown www-data:www-data {} \; && \
+         chmod +x /var/www/html/snep/agi/*
+RUN mkdir /var/log/snep && \
+         cd /var/log/snep && \
+         touch ui.log && \
+         touch agi.log && \
+         chown -R www-data.www-data * && \
+         cd /var/www/html/snep/ && \
+         ln -s /var/log/snep logs && \
+         cd /var/lib/asterisk/agi-bin/ && \
+         ln -s /var/www/html/snep/agi/ snep && \
+         cd /etc/apache2/sites-enabled/ && \
+         ln -s /var/www/html/snep/install/snep.apache2 001-snep && \
+         cd /var/spool/asterisk/ && \
+         rm -rf monitor && \
+         ln -sf /var/www/html/snep/arquivos monitor
+RUN cd /etc && \
+         rm -rf asterisk && \
+         cp -avr /var/www/html/snep/install/etc/asterisk . && \
+         cp /var/www/html/snep/install/etc/odbc* . 
+RUN cd  /var/www/html/snep/install/sounds && \
+         mkdir -p /var/lib/asterisk/sounds/en && \
+         tar -xzf asterisk-core-sounds-en-wav-current.tar.gz -C /var/lib/asterisk/sounds/en && \
+         tar -xzf asterisk-extra-sounds-en-wav-current.tar.gz  -C /var/lib/asterisk/sounds/en && \
+         mkdir /var/lib/asterisk/sounds/es && \
+         tar -xzf asterisk-core-sounds-es-wav-current.tar.gz  -C /var/lib/asterisk/sounds/es && \
+         mkdir /var/lib/asterisk/sounds/pt_BR && \
+         tar -xzf asterisk-core-sounds-pt_BR-wav.tgz -C /var/lib/asterisk/sounds/pt_BR && \
+         cd /var/lib/asterisk/sounds && \
+         mkdir -p es/tmp es/backup en/tmp en/backup pt_BR/tmp pt_BR/backup && \
+         chown -R www-data:www-data *
+RUN cd /var/lib/asterisk/moh && \
+         mkdir tmp backup && \
+         chown -R www-data.www-data *  && \
+         rm -f *-asterisk-moh-opsound-wav
+RUN mkdir -p /var/www/html/snep/sounds && \
+         cd /var/www/html/snep/sounds/ && \
+         ln -sf /var/lib/asterisk/moh/ moh && \
+         ln -sf /var/lib/asterisk/sounds/pt_BR/ pt_BR
+COPY odbc.ini /etc/odbc.ini
+COPY start.sh /var/src/
+RUN chmod +x /var/src/start.sh
+#COPY database.sql .
+#COPY core-cnl.sql .
+#COPY schema.sql .
+#COPY system_data.sql .
+COPY odbcinst.ini /etc
+COPY odbc.ini /etc
+COPY setup.conf /var/www/html/snep/includes/
+CMD /var/src/start.sh
