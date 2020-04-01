@@ -1,0 +1,6 @@
+FROM mysql:5
+#COPY setup.sql /docker-entrypoint-initdb.d/
+COPY database.sql /docker-entrypoint-initdb.d/1-database.sql
+COPY schema.sql /docker-entrypoint-initdb.d/2-schema.sql 
+COPY core-cnl.sql /docker-entrypoint-initdb.d/3-core-cnl.sql
+COPY system_data.sql /docker-entrypoint-initdb.d/4-system_data.sql
