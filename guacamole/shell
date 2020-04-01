@@ -1,0 +1,21 @@
+#!/bin/sh
+cd /var/jenkins_home/scripts/
+npm install request
+node verificarNomeCliente.js ${NOME_CLIENTE}
+
+apt-get update
+apt-get -y install zip
+cp /var/jenkins_home/logosClientes/001_PADRAO/guac-customize.jar guac-customize-${NOME_CLIENTE}.jar
+cp /var/jenkins_home/scripts/guacamole/start.sh .
+zip -d guac-customize-${NOME_CLIENTE}.jar "web/images/logo.png"
+rm -rf web
+mkdir -p web/images/
+cp /var/jenkins_home/logosClientes/${NOME_CLIENTE}.png web/images/logo.png
+zip -rv guac-customize-${NOME_CLIENTE}.jar web/images/logo.png
+/var/jenkins_home/tools/org.jenkinsci.plugins.docker.commons.tools.DockerTool/18.03.1-ce/bin/docker login -u daniloliebel -p V1129power!
+
+
+#####APOS O BUILD DO CONTAINER
+cd /var/jenkins_home/scripts/
+npm install request
+node atualizaLoadBalancerRancher.js ${NOME_CLIENTE} ${DOMINIO_CLIENTE}
