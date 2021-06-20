@@ -1,3 +1,8 @@
 .controller.ds4 {
-    opacity: 0.5;
+    background: url(ps4-assets/base.svgz);
+    height: 598px;
+    width: 806px;
+    /*    margin-left: -403px;
+        margin-top: -280px;*/
+   opacity: 0.5;
 }
